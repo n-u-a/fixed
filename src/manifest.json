@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+  "version": "1.0.1",
+  "name": "__MSG_extName__",
+  "description": "You can view the list of commits on the pull request and copy any commit ID.",
+  "default_locale": "en",
+  "permissions": [
+    "https://github.com/",
+    "tabs"
+  ],
+  "icons": {
+    "16": "icons/clip_commit_ver2.png",
+    "38": "icons/clip_commit_ver2.png",
+    "128": "icons/clip_commit_ver2.png"
+  },
+  "background": {
+    "scripts": [
+      "js/background.js"
+    ],
+    "persistent": false
+  },
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "__MSG_extName__"
+  },
+  "content_security_policy":"script-src 'self' 'unsafe-eval' https://*.firebaseio.com https://www.googleapis.com https://apis.google.com https://*.firebaseapp.com; object-src 'self'",
+  "key":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAm0+Zf+9O0sJUvnkF2vAWrYqpeWiiG8PZcevaGZnxxYCwsF0PCiyg1zHcLxxjrStzXd2daXijkGtdJOAhhTUaPlN0HyqJSI2VC4Mmr8dJTl39G6WUkW6Xq+r4mXPqeDbmrRSY8ExXa6aoZ25LmXm30zELO3W3rJmU9nbYUnUlGOoqxFyy5kbqf9MnYCEjCbc78sufl84WvnWaUjV8Y0Bxp5BneKMwcpAiHddzzvi7m4EKNTV0b4bM6X2CDAfMOXxhR+JtJgfditVsf27P3NJS/n3UuUC93JLjXG4SiXEldO5Ty7Zdew3bLkvttL8EcmosAMyKQbiJEpwHXMzFMqMu8QIDAQAB"
+}
