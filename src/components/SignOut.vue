@@ -40,7 +40,6 @@ export default {
 
       signOut(auth)
         .then(() => {
-          console.log("サインアウト");
           this.$store.state.userName = "";
           this.$router.push({
             name: "SignIn",

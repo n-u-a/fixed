@@ -108,7 +108,7 @@ export default {
       this.sha = sha;
       setTimeout(() => {
         this.isDisable = false;
-      }, 100000);
+      }, 1500);
 
       navigator.clipboard
         .writeText(text)
@@ -160,13 +160,16 @@ export default {
                 commit["copyText"] = sha + " - " + commitMessage;
                 commit["sha"] = sha;
                 commit["url"] = data.html_url;
-                commit["commiter"] = data.committer.login;
+                commit["commiter"] = data.commit.committer.name;
                 if (commitMessage.length > 16) {
                   commitMessage = commitMessage.substr(0, 15) + "...";
                 }
                 commit["message"] = commitMessage;
                 instance.commits.push(commit);
               }
+            })
+            .catch((error) => {
+              console.error(error);
             });
         }
       });

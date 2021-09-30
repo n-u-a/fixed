@@ -24,7 +24,7 @@ let fetchCurrentTabInformation = new Promise((resolve) => {
 });
 
 let firebaseAuthentication = new Promise((resolve) => {
-  const env =  process.env;
+  const env = process.env;
   const firebaseConfig = {
     apiKey: env.VUE_APP_API_KEY,
     authDomain: env.VUE_APP_AUTH_DOMAIN,

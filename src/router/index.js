@@ -6,6 +6,7 @@ const CommitLog = () => import(/* webpackChunkName: "CommitLog" */ "../component
 const CommitLogGuest = () => import(/* webpackChunkName: "CommitLogGuest" */ "../components/CommitLogGuest.vue");
 const SignIn = () => import(/* webpackChunkName: "SignIn" */ "../components/SignIn.vue");
 const Notice = () => import(/* webpackChunkName: "Notice" */ "../components/Notice.vue");
+const AuthError = () => import(/* webpackChunkName: "AuthError" */ "../components/AuthError.vue");
 
 Vue.use(VueRouter);
 
@@ -37,6 +38,11 @@ const routes = [
     path: "/notice",
     name: "Notice",
     component: Notice,
+  },
+  {
+    path: "/error",
+    name: "AuthError",
+    component: AuthError,
   },
 ];
 

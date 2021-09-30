@@ -117,12 +117,14 @@ export default {
               params: { githubtoken: token },
             });
           })
-          // エラーページを作る
           .catch((error) => {
             console.error("error", error);
             // The AuthCredential type that was used.
-            const credential = GithubAuthProvider.credentialFromError(error);
-            console.error("credential", credential);
+            // const credential = GithubAuthProvider.credentialFromError(error);
+            // console.error("credential", credential);
+            instance.$router.push({
+              name: "AuthError",
+            });
           });
       });
     },

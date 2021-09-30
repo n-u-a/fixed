@@ -160,6 +160,9 @@ export default {
             })
             .catch(() => {
               this.isNoCommit = true;
+            })
+            .catch((error) => {
+              console.error(error);
             });
         }
       });
