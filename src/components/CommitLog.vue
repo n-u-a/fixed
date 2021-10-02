@@ -7,11 +7,8 @@
           <span class="toggle__content"></span>
           <span class="toggle__circle"></span>
         </label>
-        <span v-if="!extractCommit" class="about-displayed"
-          ><b>All commits</b> are shown.</span
-        >
-        <span v-if="extractCommit" class="about-displayed"
-          ><b>Only your commits</b> are shown.</span
+        <span class="about-displayed"
+          ><b>{{ displayedCommit }}</b> are shown.</span
         >
       </div>
     </div>
@@ -46,7 +43,7 @@
                   @click="copy(commit.copyText, commit.sha)"
                   v-tooltip.left="{
                     content: 'copied!',
-                    show: isDisable && commit.sha === sha,
+                    show: copied && commit.sha === sha,
                     trigger: 'manual',
                   }"
                   class="btn-clipboard inline-block"
@@ -72,6 +69,7 @@
 
 <script>
 import axios from "axios";
+import _ from "lodash";
 import SignOut from "@/components/SignOut.vue";
 import { baseUrl, header } from "@/constants.js";
 import { fetchCurrentTabInformation } from "@/background.js";
@@ -90,30 +88,28 @@ export default {
   data() {
     return {
       commits: [],
-      token: this.githubtoken,
       extractCommit: false,
-      isDisable: false,
+      copied: false,
       sha: "",
+      displayedCommit: "All commits",
     };
   },
   created() {
     preventBack();
   },
   mounted() {
-    this.fetchCommits(this.token);
+    this.fetchCommits(this.githubtoken);
   },
   methods: {
     copy(text, sha) {
-      this.isDisable = true;
       this.sha = sha;
-      setTimeout(() => {
-        this.isDisable = false;
-      }, 1500);
-
       navigator.clipboard
         .writeText(text)
         .then(() => {
-          console.log("copied!");
+          this.copied = true;
+          setTimeout(() => {
+            this.copied = false;
+          }, 1000);
         })
         .catch((e) => {
           console.error(e);
@@ -122,17 +118,16 @@ export default {
     toggle() {
       this.extractCommit = !this.extractCommit;
       if (this.extractCommit) {
-        let commit = this.commits.filter(
-          (v) => v["commiter"] === this.$store.state.userName
-        );
-
-        this.commits = commit;
+        let extractedCommit = _.takeRight(this.commits, 10);
+        this.displayedCommit = "Last 10 commits";
+        this.commits = extractedCommit;
       } else {
-        this.commits = [];
-        this.fetchCommits(this.token);
+        this.displayedCommit = "All commits";
+        this.fetchCommits(this.githubtoken);
       }
     },
     fetchCommits(token) {
+      this.commits = [];
       const instance = this;
       fetchCurrentTabInformation.then((pullRequestData) => {
         if (pullRequestData.owner) {
@@ -154,22 +149,28 @@ export default {
             })
             .then((res) => {
               for (let data of res.data) {
-                let commit = {};
                 let sha = data.sha.substr(0, 7);
-                let commitMessage = data.commit.message;
-                commit["copyText"] = sha + " - " + commitMessage;
-                commit["sha"] = sha;
-                commit["url"] = data.html_url;
-                commit["commiter"] = data.commit.committer.name;
-                if (commitMessage.length > 16) {
-                  commitMessage = commitMessage.substr(0, 15) + "...";
-                }
-                commit["message"] = commitMessage;
+                let commitMessage = (() => {
+                  // eslint-disable-next-line
+                  if (data.commit.message.length > 16) return data.commit.message.substr(0, 15) + "...";
+                  return data.commit.message;
+                })();
+
+                let commit = {
+                  copyText: sha + " - " + commitMessage,
+                  sha: sha,
+                  url: data.html_url,
+                  commiter: data.commit.committer.name,
+                  message: commitMessage,
+                };
                 instance.commits.push(commit);
               }
             })
-            .catch((error) => {
-              console.error(error);
+            .catch(() => {
+              this.$router.push({
+                name: "AuthError",
+                params: { errorReason: "Getting commits" },
+              });
             });
         }
       });

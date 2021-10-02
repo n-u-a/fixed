@@ -104,16 +104,14 @@ export default {
   },
   methods: {
     copy(text, sha) {
-      this.isDisable = true;
       this.sha = sha;
-      setTimeout(() => {
-        this.isDisable = false;
-      }, 1100);
-
       navigator.clipboard
         .writeText(text)
         .then(() => {
-          console.log("copied!");
+          this.copied = true;
+          setTimeout(() => {
+            this.copied = false;
+          }, 1000);
         })
         .catch((e) => {
           console.error(e);
@@ -142,16 +140,19 @@ export default {
               if (res.data) {
                 this.isNoCommit = false;
                 for (let data of res.data) {
-                  let commit = {};
                   let sha = data.sha.substr(0, 7);
-                  let commitMessage = data.commit.message;
-                  commit["copyText"] = sha + " - " + commitMessage;
-                  commit["sha"] = sha;
-                  commit["url"] = data.html_url;
-                  if (commitMessage.length > 18) {
-                    commitMessage = commitMessage.substr(0, 15) + "...";
-                  }
-                  commit["message"] = commitMessage;
+                  let commitMessage = (() => {
+                    // eslint-disable-next-line
+                    if (data.commit.message.length > 16) return data.commit.message.substr(0, 15) + "...";
+                    return data.commit.message;
+                  })();
+                  let commit = {
+                    copyText: sha + " - " + commitMessage,
+                    sha: sha,
+                    url: data.html_url,
+                    commiter: data.commit.committer.name,
+                    message: commitMessage,
+                  };
                   instance.commits.push(commit);
                 }
               } else {
@@ -160,9 +161,6 @@ export default {
             })
             .catch(() => {
               this.isNoCommit = true;
-            })
-            .catch((error) => {
-              console.error(error);
             });
         }
       });

@@ -124,6 +124,7 @@ export default {
             // console.error("credential", credential);
             instance.$router.push({
               name: "AuthError",
+              params: { errorReason: "Github Authentication" },
             });
           });
       });

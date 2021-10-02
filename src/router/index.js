@@ -43,6 +43,7 @@ const routes = [
     path: "/error",
     name: "AuthError",
     component: AuthError,
+    props: true,
   },
 ];
 
