@@ -71,7 +71,7 @@
 import axios from "axios";
 import _ from "lodash";
 import SignOut from "@/components/SignOut.vue";
-import { baseUrl, header } from "@/constants.js";
+import { constants } from "@/constants.js";
 import { fetchCurrentTabInformation } from "@/background.js";
 import { preventBack } from "@/utils.js";
 
@@ -92,13 +92,29 @@ export default {
       copied: false,
       sha: "",
       displayedCommit: "All commits",
+      maxCommitsPerPage: 100,
+      owner: "",
+      repository: "",
+      pullRequestNumber: "",
+      githubHeader: {},
     };
   },
   created() {
     preventBack();
   },
   mounted() {
-    this.createCommitList(this.githubtoken);
+    fetchCurrentTabInformation.then((pullRequestData) => {
+      if (pullRequestData.owner) {
+        this.githubHeader = {
+          Accept: constants.header,
+          Authorization: `token ${this.githubtoken}`,
+        };
+        this.owner = pullRequestData.owner;
+        this.repository = pullRequestData.repository;
+        this.pullRequestNumber = pullRequestData.pullRequestNumber;
+        this.createCommitList();
+      }
+    });
   },
   methods: {
     copy(text, sha) {
@@ -123,59 +139,47 @@ export default {
         this.commits = extractedCommit;
       } else {
         this.displayedCommit = "All commits";
-        this.createCommitList(this.githubtoken);
+        this.createCommitList();
       }
     },
-    createCommitList(token) {
+    createCommitList() {
       this.commits = [];
-      fetchCurrentTabInformation.then((pullRequestData) => {
-        if (pullRequestData.owner) {
-          const request = axios.create({
-            baseURL: baseUrl,
-          });
-
-          const owner = pullRequestData.owner;
-          const repository = pullRequestData.repository;
-          const pullRequestNumber = pullRequestData.pullRequestNumber;
-          const pullRequestUrl = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
-
-          request
-            .get(pullRequestUrl, {
-              headers: {
-                Accept: header,
-                Authorization: `token ${token}`,
-              },
-            })
-            .then((pullRequest) => {
-              const commitsUrl = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/commits`;
-              let pages = Math.ceil(pullRequest.data.commits / 100);
-              this._fetchCommits(commitsUrl, pages.length, 0, token);
-            })
-            .catch(() => {
-              this.$router.push({
-                name: "AuthError",
-                params: { errorReason: "Getting commits" },
-              });
-            });
-        }
-      });
-    },
-    _fetchCommits(url, pages, page, token) {
-      const instance = this;
-
       const request = axios.create({
-        baseURL: baseUrl,
+        baseURL: constants.baseUrl,
       });
+      const pullRequestUrl = `/repos/${this.owner}/${this.repository}/pulls/${this.pullRequestNumber}`;
+
+      request
+        .get(pullRequestUrl, {
+          headers: this.githubHeader,
+        })
+        .then((pullRequest) => {
+          let pages = Math.ceil(
+            pullRequest.data.commits / this.maxCommitsPerPage
+          );
+          let pageInitialValue = 0;
+          this._fetchCommits(pages, pageInitialValue);
+        })
+        .catch(() => {
+          this.$router.push({
+            name: "AuthError",
+            params: { errorReason: "Getting commits" },
+          });
+        });
+    },
+    _fetchCommits(pages, page) {
+      const instance = this;
+      const request = axios.create({
+        baseURL: constants.baseUrl,
+      });
+      const commitsUrl = `/repos/${this.owner}/${this.repository}/pulls/${this.pullRequestNumber}/commits`;
 
       let targetPage = page + 1;
       request
-        .get(url, {
-          headers: {
-            Accept: header,
-            Authorization: `token ${token}`,
-          },
+        .get(commitsUrl, {
+          headers: this.githubHeader,
           params: {
-            per_page: 100,
+            per_page: this.maxCommitsPerPage,
             page: targetPage,
           },
         })
@@ -184,6 +188,8 @@ export default {
             let sha = data.sha.substr(0, 7);
             let originalMessage = data.commit.message;
             let commitMessage = (() => {
+              // eslint-disable-next-line
+              if (originalMessage.length > 26 && originalMessage.match(/^[a-zA-Z0-9!-/:-@¥[-`{-~#\/_ ]*$/)) return originalMessage.substr(0, 25) + "...";
               // eslint-disable-next-line
               if (originalMessage.length > 15) return originalMessage.substr(0, 14) + "...";
               return originalMessage;
@@ -201,7 +207,7 @@ export default {
           if (pages === targetPage) {
             return "finish";
           } else {
-            this._fetchCommits(url, pages, targetPage, token);
+            this._fetchCommits(pages, targetPage);
           }
         })
         .catch(() => {

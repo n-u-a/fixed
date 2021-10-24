@@ -78,7 +78,7 @@
 <script>
 import axios from "axios";
 import SignOut from "@/components/SignOut.vue";
-import { baseUrl, header } from "@/constants.js";
+import { constants } from "@/constants.js";
 import { fetchCurrentTabInformation } from "@/background.js";
 import Cookies from "js-cookie";
 import { preventBack } from "@/utils.js";
@@ -122,7 +122,7 @@ export default {
       fetchCurrentTabInformation.then((pullRequestData) => {
         if (pullRequestData.owner) {
           const request = axios.create({
-            baseURL: baseUrl,
+            baseURL: constants.baseUrl,
           });
 
           const owner = pullRequestData.owner;
@@ -133,7 +133,7 @@ export default {
           request
             .get(URL, {
               headers: {
-                Accept: header,
+                Accept: constants.header,
               },
               params: {
                 per_page: 100,
@@ -146,6 +146,8 @@ export default {
                   let sha = data.sha.substr(0, 7);
                   let originalCommitMessage = data.commit.message;
                   let commitMessage = (() => {
+                    // eslint-disable-next-line
+                    if (originalMessage.length > 26 && originalMessage.match(/^[a-zA-Z0-9!-/:-@¥[-`{-~#\/_ ]*$/)) return originalMessage.substr(0, 25) + "...";
                     // eslint-disable-next-line
                     if (originalCommitMessage.length > 16) return originalCommitMessage.substr(0, 15) + "...";
                     return data.commit.message;
