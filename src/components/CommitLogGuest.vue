@@ -135,19 +135,23 @@ export default {
               headers: {
                 Accept: header,
               },
+              params: {
+                per_page: 100,
+              },
             })
             .then((res) => {
               if (res.data) {
                 this.isNoCommit = false;
                 for (let data of res.data) {
                   let sha = data.sha.substr(0, 7);
+                  let originalCommitMessage = data.commit.message;
                   let commitMessage = (() => {
                     // eslint-disable-next-line
-                    if (data.commit.message.length > 16) return data.commit.message.substr(0, 15) + "...";
+                    if (originalCommitMessage.length > 16) return originalCommitMessage.substr(0, 15) + "...";
                     return data.commit.message;
                   })();
                   let commit = {
-                    copyText: sha + " - " + commitMessage,
+                    copyText: sha + " - " + originalCommitMessage,
                     sha: sha,
                     url: data.html_url,
                     commiter: data.commit.committer.name,

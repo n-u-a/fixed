@@ -98,7 +98,7 @@ export default {
     preventBack();
   },
   mounted() {
-    this.fetchCommits(this.githubtoken);
+    this.createCommitList(this.githubtoken);
   },
   methods: {
     copy(text, sha) {
@@ -123,12 +123,11 @@ export default {
         this.commits = extractedCommit;
       } else {
         this.displayedCommit = "All commits";
-        this.fetchCommits(this.githubtoken);
+        this.createCommitList(this.githubtoken);
       }
     },
-    fetchCommits(token) {
+    createCommitList(token) {
       this.commits = [];
-      const instance = this;
       fetchCurrentTabInformation.then((pullRequestData) => {
         if (pullRequestData.owner) {
           const request = axios.create({
@@ -138,33 +137,19 @@ export default {
           const owner = pullRequestData.owner;
           const repository = pullRequestData.repository;
           const pullRequestNumber = pullRequestData.pullRequestNumber;
-          const url = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/commits`;
+          const pullRequestUrl = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
 
           request
-            .get(url, {
+            .get(pullRequestUrl, {
               headers: {
                 Accept: header,
                 Authorization: `token ${token}`,
               },
             })
-            .then((res) => {
-              for (let data of res.data) {
-                let sha = data.sha.substr(0, 7);
-                let commitMessage = (() => {
-                  // eslint-disable-next-line
-                  if (data.commit.message.length > 16) return data.commit.message.substr(0, 15) + "...";
-                  return data.commit.message;
-                })();
-
-                let commit = {
-                  copyText: sha + " - " + commitMessage,
-                  sha: sha,
-                  url: data.html_url,
-                  commiter: data.commit.committer.name,
-                  message: commitMessage,
-                };
-                instance.commits.push(commit);
-              }
+            .then((pullRequest) => {
+              const commitsUrl = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/commits`;
+              let pages = Math.ceil(pullRequest.data.commits / 100);
+              this._fetchCommits(commitsUrl, pages.length, 0, token);
             })
             .catch(() => {
               this.$router.push({
@@ -174,6 +159,57 @@ export default {
             });
         }
       });
+    },
+    _fetchCommits(url, pages, page, token) {
+      const instance = this;
+
+      const request = axios.create({
+        baseURL: baseUrl,
+      });
+
+      let targetPage = page + 1;
+      request
+        .get(url, {
+          headers: {
+            Accept: header,
+            Authorization: `token ${token}`,
+          },
+          params: {
+            per_page: 100,
+            page: targetPage,
+          },
+        })
+        .then((commits) => {
+          for (let data of commits.data) {
+            let sha = data.sha.substr(0, 7);
+            let originalMessage = data.commit.message;
+            let commitMessage = (() => {
+              // eslint-disable-next-line
+              if (originalMessage.length > 15) return originalMessage.substr(0, 14) + "...";
+              return originalMessage;
+            })();
+
+            let commit = {
+              copyText: sha + " - " + originalMessage,
+              sha: sha,
+              url: data.html_url,
+              commiter: data.commit.committer.name,
+              message: commitMessage,
+            };
+            instance.commits.push(commit);
+          }
+          if (pages === targetPage) {
+            return "finish";
+          } else {
+            this._fetchCommits(url, pages, targetPage, token);
+          }
+        })
+        .catch(() => {
+          this.$router.push({
+            name: "AuthError",
+            params: { errorReason: "Getting commits" },
+          });
+        });
     },
   },
 };
