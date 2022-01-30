@@ -69,7 +69,7 @@ export default {
       loading: false,
     };
   },
-  created() {
+  beforeCreate() {
     preventBack();
 
     const userName = Cookies.get("userName");
