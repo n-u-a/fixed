@@ -7,11 +7,8 @@
           <span class="toggle__content"></span>
           <span class="toggle__circle"></span>
         </label>
-        <span v-if="!extractCommit" class="about-displayed"
-          ><b>All commits</b> are shown.</span
-        >
-        <span v-if="extractCommit" class="about-displayed"
-          ><b>Only your commits</b> are shown.</span
+        <span class="about-displayed"
+          ><b>{{ displayedCommit }}</b> are shown.</span
         >
       </div>
     </div>
@@ -46,7 +43,7 @@
                   @click="copy(commit.copyText, commit.sha)"
                   v-tooltip.left="{
                     content: 'copied!',
-                    show: isDisable && commit.sha === sha,
+                    show: copied && commit.sha === sha,
                     trigger: 'manual',
                   }"
                   class="btn-clipboard inline-block"
@@ -72,8 +69,9 @@
 
 <script>
 import axios from "axios";
+import _ from "lodash";
 import SignOut from "@/components/SignOut.vue";
-import { baseUrl, header } from "@/constants.js";
+import { constants } from "@/constants.js";
 import { fetchCurrentTabInformation } from "@/background.js";
 import { preventBack } from "@/utils.js";
 
@@ -90,30 +88,44 @@ export default {
   data() {
     return {
       commits: [],
-      token: this.githubtoken,
       extractCommit: false,
-      isDisable: false,
+      copied: false,
       sha: "",
+      displayedCommit: "All commits",
+      maxCommitsPerPage: 100,
+      owner: "",
+      repository: "",
+      pullRequestNumber: "",
+      githubHeader: {},
     };
   },
   created() {
     preventBack();
   },
   mounted() {
-    this.fetchCommits(this.token);
+    fetchCurrentTabInformation.then((pullRequestData) => {
+      if (pullRequestData.owner) {
+        this.githubHeader = {
+          Accept: constants.header,
+          Authorization: `token ${this.githubtoken}`,
+        };
+        this.owner = pullRequestData.owner;
+        this.repository = pullRequestData.repository;
+        this.pullRequestNumber = pullRequestData.pullRequestNumber;
+        this.createCommitList();
+      }
+    });
   },
   methods: {
     copy(text, sha) {
-      this.isDisable = true;
       this.sha = sha;
-      setTimeout(() => {
-        this.isDisable = false;
-      }, 1500);
-
       navigator.clipboard
         .writeText(text)
         .then(() => {
-          console.log("copied!");
+          this.copied = true;
+          setTimeout(() => {
+            this.copied = false;
+          }, 1000);
         })
         .catch((e) => {
           console.error(e);
@@ -122,57 +134,88 @@ export default {
     toggle() {
       this.extractCommit = !this.extractCommit;
       if (this.extractCommit) {
-        let commit = this.commits.filter(
-          (v) => v["commiter"] === this.$store.state.userName
-        );
-
-        this.commits = commit;
+        let extractedCommit = _.takeRight(this.commits, 10);
+        this.displayedCommit = "Last 10 commits";
+        this.commits = extractedCommit;
       } else {
-        this.commits = [];
-        this.fetchCommits(this.token);
+        this.displayedCommit = "All commits";
+        this.createCommitList();
       }
     },
-    fetchCommits(token) {
-      const instance = this;
-      fetchCurrentTabInformation.then((pullRequestData) => {
-        if (pullRequestData.owner) {
-          const request = axios.create({
-            baseURL: baseUrl,
-          });
-
-          const owner = pullRequestData.owner;
-          const repository = pullRequestData.repository;
-          const pullRequestNumber = pullRequestData.pullRequestNumber;
-          const url = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/commits`;
-
-          request
-            .get(url, {
-              headers: {
-                Accept: header,
-                Authorization: `token ${token}`,
-              },
-            })
-            .then((res) => {
-              for (let data of res.data) {
-                let commit = {};
-                let sha = data.sha.substr(0, 7);
-                let commitMessage = data.commit.message;
-                commit["copyText"] = sha + " - " + commitMessage;
-                commit["sha"] = sha;
-                commit["url"] = data.html_url;
-                commit["commiter"] = data.commit.committer.name;
-                if (commitMessage.length > 16) {
-                  commitMessage = commitMessage.substr(0, 15) + "...";
-                }
-                commit["message"] = commitMessage;
-                instance.commits.push(commit);
-              }
-            })
-            .catch((error) => {
-              console.error(error);
-            });
-        }
+    createCommitList() {
+      this.commits = [];
+      const request = axios.create({
+        baseURL: constants.baseUrl,
       });
+      const pullRequestUrl = `/repos/${this.owner}/${this.repository}/pulls/${this.pullRequestNumber}`;
+
+      request
+        .get(pullRequestUrl, {
+          headers: this.githubHeader,
+        })
+        .then((pullRequest) => {
+          let pages = Math.ceil(
+            pullRequest.data.commits / this.maxCommitsPerPage
+          );
+          let pageInitialValue = 0;
+          this._fetchCommits(pages, pageInitialValue);
+        })
+        .catch(() => {
+          this.$router.push({
+            name: "AuthError",
+            params: { errorReason: "Getting commits" },
+          });
+        });
+    },
+    _fetchCommits(pages, page) {
+      const instance = this;
+      const request = axios.create({
+        baseURL: constants.baseUrl,
+      });
+      const commitsUrl = `/repos/${this.owner}/${this.repository}/pulls/${this.pullRequestNumber}/commits`;
+
+      let targetPage = page + 1;
+      request
+        .get(commitsUrl, {
+          headers: this.githubHeader,
+          params: {
+            per_page: this.maxCommitsPerPage,
+            page: targetPage,
+          },
+        })
+        .then((commits) => {
+          for (let data of commits.data) {
+            let sha = data.sha.substr(0, 7);
+            let originalMessage = data.commit.message;
+            let commitMessage = (() => {
+              // eslint-disable-next-line
+              if (originalMessage.length > 26 && originalMessage.match(/^[a-zA-Z0-9!-/:-@¥[-`{-~#\/_ ]*$/)) return originalMessage.substr(0, 25) + "...";
+              // eslint-disable-next-line
+              if (originalMessage.length > 15) return originalMessage.substr(0, 14) + "...";
+              return originalMessage;
+            })();
+
+            let commit = {
+              copyText: sha + " - " + originalMessage,
+              sha: sha,
+              url: data.html_url,
+              commiter: data.commit.committer.name,
+              message: commitMessage,
+            };
+            instance.commits.push(commit);
+          }
+          if (pages === targetPage) {
+            return "finish";
+          } else {
+            this._fetchCommits(pages, targetPage);
+          }
+        })
+        .catch(() => {
+          this.$router.push({
+            name: "AuthError",
+            params: { errorReason: "Getting commits" },
+          });
+        });
     },
   },
 };

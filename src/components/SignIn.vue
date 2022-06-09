@@ -69,7 +69,7 @@ export default {
       loading: false,
     };
   },
-  created() {
+  beforeCreate() {
     preventBack();
 
     const userName = Cookies.get("userName");
@@ -124,6 +124,7 @@ export default {
             // console.error("credential", credential);
             instance.$router.push({
               name: "AuthError",
+              params: { errorReason: "Github Authentication" },
             });
           });
       });

@@ -10,14 +10,16 @@ let fetchCurrentTabInformation = new Promise((resolve) => {
 
     // eslint-disable-next-line
     if (hostname === "github.com" && splittedUrl.length > 4 && splittedUrl[5] === "pull") {
-      const pullRequestData = {};
-      pullRequestData["owner"] = splittedUrl[3];
-      pullRequestData["repository"] = splittedUrl[4];
-      pullRequestData["pullRequestNumber"] = splittedUrl[6];
+      const pullRequestData = {
+        owner: splittedUrl[3],
+        repository: splittedUrl[4],
+        pullRequestNumber: splittedUrl[6],
+      };
       resolve(pullRequestData);
     } else {
-      const pullRequestData = {};
-      pullRequestData["isNotPullRequest"] = true;
+      const pullRequestData = {
+        isNotPullRequest: true,
+      };
       resolve(pullRequestData);
     }
   });

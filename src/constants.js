@@ -1,4 +1,9 @@
-const baseUrl = "https://api.github.com";
-const header = "application/vnd.github.v3+json";
+const base = "https://api.github.com";
+const head = "application/vnd.github.v3+json";
 
-export { baseUrl, header };
+const constants = {
+  baseUrl: base,
+  header: head,
+};
+
+export { constants };

@@ -2,10 +2,10 @@
   <div>
     <div class="no-commit">
       <div class="no-commit-container">
-        <h2>Login failure</h2>
+        <h3>{{ errorReason }} failure</h3>
         <hr />
         <p>
-          Github authentication has failed. <br />
+          {{ errorReason }} has failed. <br />
           Please wait for a while and try again, or clear your browser cache
           before trying again.
         </p>
@@ -33,12 +33,19 @@
 import Cookies from "js-cookie";
 import { preventBack } from "@/utils.js";
 export default {
+  props: {
+    errorReason: {
+      type: String,
+    },
+  },
   created() {
     preventBack();
   },
   methods: {
     logout() {
       this.$store.state.userName = "";
+      Cookies.remove("userName");
+      Cookies.remove("githubToken");
       Cookies.remove("userName");
       this.$router.push({
         name: "SignIn",
